@@ -2,6 +2,12 @@ import { apiSlice } from './apiSlice';
 
 export const semesterApiSlice = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
+    getAllFeedBack: builder.query({
+      query: (id) => ({
+        url: `classroom/${id}/list-feedback`
+      }),
+      providesTags: ['FeedBack']
+    }),
     getAllSemester: builder.query({
       query: () => ({
         url: 'semester/get-all',
@@ -57,6 +63,13 @@ export const semesterApiSlice = apiSlice.injectEndpoints({
       }),
       invalidatesTags: ['Semester'],
     }),
+    getSemesterExportData: builder.mutation({
+      query: (id) => ({
+        url: `statistics/${id}/export-data`,
+        method: 'GET',
+      }),
+      invalidatesTags: ['SemesterExport'],
+    }),
     getCurrentSemesterStats: builder.query({
       query: (id) => `statistics`,
       providesTags: ['Semester'],
@@ -76,6 +89,7 @@ export const semesterApiSlice = apiSlice.injectEndpoints({
 });
 
 export const {
+  useGetAllFeedBackQuery,
   useGetAllSemesterQuery,
   useGetListStudentInCLassQuery,
   useAddSemesterMutation,
@@ -83,6 +97,7 @@ export const {
   useUpdateSemesterMutation,
   useDeleteSemesterMutation,
   useGetSemesterStatsMutation,
+  useGetSemesterExportDataMutation,
   useGetCurrentSemesterStatsQuery,
   useImportResultSemesterMutation,
 } = semesterApiSlice;

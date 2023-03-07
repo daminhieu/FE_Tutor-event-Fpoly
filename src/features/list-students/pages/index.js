@@ -1,8 +1,8 @@
 import React, { useEffect } from 'react';
-import { Input, Table, Tag, Tooltip } from 'antd';
+import { Input, Table, Tag } from 'antd';
 import './style.css';
 import { FaReply } from 'react-icons/fa';
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useGetListStudentInCLassQuery } from '../../../app/api/semesterApiSlice';
 import Spinner from '../../../components/Spinner';
 import { Helmet } from 'react-helmet-async';
@@ -32,12 +32,6 @@ const columns = [
         )}
       </>
     ),
-  },
-  {
-    title: 'Mã sinh viên',
-    dataIndex: 'studentCode',
-    key: 'studentCode',
-    width: '10%',
   },
   {
     title: 'Email',
@@ -107,13 +101,13 @@ const ListStudent = () => {
     key: index,
     index,
     id,
-    phone: item.phone_number,
-    studentCode: item.code,
-    studentMail: item.email,
-    studentName: item.name,
-    join: item.is_joined,
-    reason: item.reason,
-    is_warning: item.is_warning,
+    phone: item?.phone_number,
+    studentCode: item?.code,
+    studentMail: item?.email,
+    studentName: item?.name,
+    join: item?.is_joined,
+    reason: item?.reason ?? '',
+    is_warning: item?.is_warning,
   }));
 
   return (
@@ -159,7 +153,6 @@ const ListStudent = () => {
               key={list.key}
               columns={columns}
               dataSource={list}
-              pagination={false}
             />
             {/* <TextArea placeholder="Ghi chú lớp" rows={4} className="tw-mt-5 tw-rounded-md" maxLength={6} /> */}
           </div>

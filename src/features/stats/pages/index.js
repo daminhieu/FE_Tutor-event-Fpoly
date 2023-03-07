@@ -1,14 +1,20 @@
 import { G2, Pie } from '@ant-design/charts';
-import { Select, Table } from 'antd';
+import { Select, Table, Button } from 'antd';
 import React, { useEffect, useState } from 'react';
 import { useDispatch } from 'react-redux';
 import {
   useGetAllSemesterQuery,
   useGetCurrentSemesterStatsQuery,
   useGetSemesterStatsMutation,
+  useGetSemesterExportDataMutation,
 } from '../../../app/api/semesterApiSlice';
 import { setFlexBreadcrumb } from '../../../components/AppBreadcrumb/breadcrumbSlice';
 import Spinner from '../../../components/Spinner';
+import ListLessonModal from '../components/ListLessonModal';
+import TeacherStatModal from '../components/TeacherStatModal';
+import TutorStatModal from '../components/TutorStatModal';
+import XLSX from 'xlsx';
+import { toast } from 'react-toastify';
 
 const StatsPage = () => {
   const G = G2.getEngine('canvas');
@@ -16,6 +22,9 @@ const StatsPage = () => {
   const [dataSourceChart, setDataSourceChart] = useState([]);
   const [dataSourceChart2, setDataSourceChart2] = useState([]);
   const [statData, setStatData] = React.useState([]);
+  const lessonHistoryModalRef = React.useRef(null);
+  const teachersHistoryModalRef = React.useRef(null);
+  const tutorHistoryModalRef = React.useRef(null);
   const dispatch = useDispatch();
   const {
     data: semesterData,
@@ -24,6 +33,33 @@ const StatsPage = () => {
   } = useGetAllSemesterQuery();
   const [getStatData, { isLoading, isError, data: statsData, isFetching }] =
     useGetSemesterStatsMutation();
+  const [getDataExport, { isLoadingDataExport, isErrorDataExport, data: dataExportResponse, isFetchingDataExport }] =
+    useGetSemesterExportDataMutation();
+
+
+  const exportXlsx = (async (semesterId, name) => {
+    await getDataExport(semesterId).unwrap().then(({ data }) => {
+      if (!data?.students?.length) return;
+
+      let wb = {
+        SheetNames: ["sinh_vien", "giang_vien"],
+        Sheets: {
+          sinh_vien: XLSX.utils.json_to_sheet(data.students),
+          giang_vien: XLSX.utils.json_to_sheet([])
+        }
+      }
+      let ws = XLSX.utils.json_to_sheet([]);
+
+      XLSX.utils.book_append_sheet(wb, ws, "Sheet");
+
+      return XLSX.writeFile(wb, "Thong_ke-" + name + "-tutor.xlsx");
+    }).catch((err) => {
+      toast.error(err.message)
+    })
+
+
+  });
+
   const {
     data: currentStatData,
     isLoading: currentLoading,
@@ -186,6 +222,7 @@ const StatsPage = () => {
     }
   }, [currentStatData]);
 
+
   return (
     <div>
       <div className="tw-flex tw-flex-col tw-items-start dark:tw-text-white">
@@ -221,69 +258,114 @@ const StatsPage = () => {
       ) : (
         <div className="tw-p-4">
           <div className="tw-flex tw-flex-wrap tw-items-center tw-justify-between tw-gap-5">
-            <div className="tw-w-full tw-border-2 tw-border-gray-700 tw-py-4 lg:tw-w-1/6">
+            <div className="tw-w-full tw-border tw-border-gray-700 tw-py-4 lg:tw-w-1/6 dark:tw-border-gray-300">
               <div className="tw-flex tw-flex-col tw-items-center">
-                <h1>Môn tutor</h1>
-                <h2 className="tw-text-lg">
+                <h1 className='dark:tw-text-white'>Môn tutor</h1>
+                <h2 className="tw-text-lg dark:tw-text-white">
                   {statData?.classrooms_statistical?.length ?? 0}
                 </h2>
               </div>
             </div>
-            <div className="tw-w-full tw-border-2 tw-border-gray-700 tw-py-4 lg:tw-w-1/6">
+            <div className="tw-w-full tw-border tw-border-gray-700 tw-py-4 lg:tw-w-1/6 dark:tw-border-gray-300">
               <div className="tw-flex tw-flex-col tw-items-center">
-                <h1>Tổng sinh viên</h1>
-                <h2 className="tw-text-lg">
+                <h1 className='dark:tw-text-white'>Tổng sinh viên</h1>
+                <h2 className="tw-text-lg dark:tw-text-white">
                   {statData?.total_students_count ?? 0}
                 </h2>
               </div>
             </div>
-            <div className="tw-w-full tw-border-2 tw-border-gray-700 tw-py-4 lg:tw-w-1/6">
+            <div className="tw-w-full tw-border tw-border-gray-700 tw-py-4 lg:tw-w-1/6 dark:tw-border-gray-300">
               <div className="tw-flex tw-flex-col tw-items-center">
-                <h1>Sinh viên tham gia</h1>
-                <h2 className="tw-text-lg">
+                <h1 className='dark:tw-text-white'>Sinh viên tham gia</h1>
+                <h2 className="tw-text-lg dark:tw-text-white">
                   {statData?.joined_students_count ?? 0}
                 </h2>
               </div>
             </div>
-            <div className="tw-w-full tw-border-2 tw-border-gray-700 tw-py-4 lg:tw-w-1/6">
+            <div className="tw-w-full tw-border tw-border-gray-700 tw-py-4 lg:tw-w-1/6 dark:tw-border-gray-300">
               <div className="tw-flex tw-flex-col tw-items-center">
-                <h1>Giảng viên</h1>
-                <h2 className="tw-text-lg">{statData?.teachers?.length ?? 0}</h2>
+                <h1 className='dark:tw-text-white'>Giảng viên</h1>
+                {
+                  statData?.teachers?.length > 0 ? (
+                    <h2 className="tw-text-lg dark:tw-text-blue-500 tw-text-blue-500 tw-cursor-pointer"
+                      onClick={() => {
+                        teachersHistoryModalRef.current?.show(statData?.teachers)
+                      }}
+
+                    >{statData?.teachers?.length ?? 0}</h2>
+
+                  ) : (
+                    <h2 className="tw-text-lg dark:tw-text-white">{statData?.teachers?.length ?? 0}</h2>
+                  )
+                }
               </div>
             </div>
-            <div className="tw-w-full tw-border-2 tw-border-gray-700 tw-py-4 lg:tw-w-1/6">
+            <div className="tw-w-full tw-border tw-border-gray-700 tw-py-4 lg:tw-w-1/6 dark:tw-border-gray-300">
               <div className="tw-flex tw-flex-col tw-items-center">
-                <h1>Trợ giảng</h1>
-                <h2 className="tw-text-lg">{statData?.tutors?.length ?? 0}</h2>
+                <h1 className='dark:tw-text-white'>Trợ giảng</h1>
+                {
+                  statData?.tutors?.length > 0 ? (
+                    <h2 className="tw-text-lg dark:tw-text-blue-500 tw-text-blue-500 tw-cursor-pointer"
+                      onClick={() => {
+                        tutorHistoryModalRef.current?.show(statData?.tutors)
+                      }}
+
+                    >{statData?.tutors?.length ?? 0}</h2>
+
+                  ) : (
+                    <h2 className="tw-text-lg dark:tw-text-white">{statData?.tutors?.length ?? 0}</h2>
+                  )
+                }
               </div>
             </div>
           </div>
           <div className="tw-flex lg:tw-flex-row tw-flex-col tw-py-6">
+            <div className="lg:tw-w-1/2 tw-w-full">
+              <Pie {...configChart2} />
+              <p className="tw-text-center dark:tw-text-white">
+                Thống kê theo tổng {statData?.total_students_count} sinh viên
+                của {statData?.classrooms_statistical?.length} môn
+              </p>
+            </div>
             <div className="lg:tw-w-1/2 tw-w-full">
               <Pie
                 loading={isLoading || isFetching || currentLoading}
                 {...config}
               />
 
-              <p className="tw-text-center">
+              <p className="tw-text-center dark:tw-text-white">
                 Thống kê theo {statData?.joined_students_count} sinh viên tham gia
               </p>
             </div>
-            <div className="lg:tw-w-1/2 tw-w-full">
-              <Pie {...configChart2} />
-              <p className="tw-text-center">
-                Thống kê theo tổng {statData?.total_students_count} sinh viên
-                của {statData?.classrooms_statistical?.length} môn
-              </p>
-            </div>
           </div>
+          <Button
+            className="tw-flex tw-items-center tw-rounded-md tw-border-2 tw-px-2 tw-text-blue-500 hover:tw-bg-transparent hover:tw-text-blue-600 dark:tw-text-slate-100 dark:hover:tw-text-blue-500"
+            type="link"
+            onClick={() => exportXlsx(statData.id, statData.name)}
+          >
+            TẢI XUỐNG THỐNG KÊ CHO KỲ HIỆN TẠI
+          </Button>
           <div>
             <Table
+              pagination={false}
               columns={[
                 {
                   title: 'Môn',
                   dataIndex: 'subject',
                   key: 'subject',
+                  render: (text, record) => {
+                    return <div className="tw-text-blue-600 tw-cursor-pointer"
+                      onClick={() => lessonHistoryModalRef.current?.show(
+                        {
+                          data: statData?.classrooms_statistical?.find(
+                            (item) => item.id === record.id
+                          )?.lessons,
+                          subject: text,
+                        }
+
+                      )}
+                    >{text}</div>
+                  },
                 },
                 {
                   title: 'Buổi học',
@@ -322,7 +404,8 @@ const StatsPage = () => {
               dataSource={statData?.classrooms_statistical?.map(
                 (item, idx) => ({
                   key: idx,
-                  subject: item?.subject.code,
+                  id: item?.id,
+                  subject: item?.subject?.code,
                   total: item?.total_students_count,
                   join: item?.joined_students.length,
                   lesson: item?.lessons.length,
@@ -350,6 +433,9 @@ const StatsPage = () => {
                 }),
               )}
             />
+            <ListLessonModal ref={lessonHistoryModalRef} />
+            <TeacherStatModal ref={teachersHistoryModalRef} />
+            <TutorStatModal ref={tutorHistoryModalRef} />
           </div>
         </div>
       )}

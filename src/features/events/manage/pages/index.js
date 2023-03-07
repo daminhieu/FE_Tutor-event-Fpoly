@@ -1,20 +1,36 @@
-import { Button, Image, Space, Table, Tooltip } from 'antd'
-import React, { useRef } from 'react'
+import { Button, Space, Table, Tooltip } from 'antd'
+import React, { useEffect, useRef } from 'react'
 import ConfirmPopup from '../../../../components/Confirm/ConfirmPopup'
 import {
-    EditOutlined,
     PlusCircleOutlined,
     DeleteOutlined,
+    EditOutlined
 } from '@ant-design/icons';
+import {
+    BsFillTrashFill
+} from 'react-icons/bs'
 import { Helmet } from 'react-helmet-async';
-import { useSelector } from 'react-redux';
-import img1 from "../../../../assets/images/B1.jpg";
-import img2 from "../../../../assets/images/B2.jpg";
 import FormEventsRef from '../components/FormEventsRef';
+import { useDeleteEventMutation, useGetAllEventQuery } from '../../../../app/api/eventApiSlice';
+import ContentEventModal from '../components/ContentEventModal';
+import { toast } from 'react-toastify';
+import ImageEventViewModal from '../components/ImageEventViewModal';
+import { Link } from 'react-router-dom';
+import moment from 'moment/moment';
+import { setFlexBreadcrumb } from '../../../../components/AppBreadcrumb/breadcrumbSlice';
+import { useDispatch } from 'react-redux';
+import Spinner from '../../../../components/Spinner';
+import { timeFormat } from '../../../../utils/TimeFormat';
 
 const ManageEvent = () => {
     const modalEventRef = useRef();
-
+    const dispatch = useDispatch();
+    const [removeEvent] = useDeleteEventMutation();
+    const handleRemoveEvent = (id) => {
+        removeEvent(id).unwrap().then((res) => {
+            toast.success(res.message);
+        }).catch((err) => toast.error(err.data.messsage))
+    }
     const columns = [
         {
             title: "STT",
@@ -26,49 +42,59 @@ const ManageEvent = () => {
             title: "Tên sự kiện",
             dataIndex: "name",
             key: "name",
-            width: '10%',
+            width: '15%',
         },
         {
             title: "Thứ - Ngày/Tháng",
             dataIndex: "date",
             key: "date",
-            width: "10%",
+            width: "15%",
         },
         {
             title: "Thời gian",
             dataIndex: "time",
             key: "time",
-            width: "10%"
+            width: "10%",
+        },
+        {
+            title: "Nơi diễn ra sự kiện",
+            dataIndex: "location",
+            key: "location",
+            width: "13%",
         },
         {
             title: "Ảnh sự kiện",
             data: "img",
             key: "img",
-            render: (_, record) => (<Image preview={false} src={record.img} />)
+            width: "10%",
+            render: (_, record) => (<ImageEventViewModal content={record.img} />)
         },
         {
             title: "Nội dung",
             dataIndex: "content",
             key: "content",
-            width: "25%",
+            width: "10%",
+            render: (_, record) => (
+                <ContentEventModal content={record.content ? record.content : "Không có nội dung"} />
+            )
         },
         {
-            title:"Số người tham gia",
-            dataIndex:"amount",
-            key:"amount",
-            width:"15%",
-            render:(_,record) => record.amount !== 0 ? (<span> {record.amount} </span>) : (<span className="tw-font-semibold tw-text-red-500">
-            Chưa có 
-          </span>)
+            title: "Số người tham gia",
+            dataIndex: "amount",
+            key: "amount",
+            width: "13%",
+            render: (_, record) => record.amount !== 0 ? (<span> {record.amount} </span>) : (<span className="tw-font-semibold tw-text-red-500">
+                Chưa có
+            </span>)
         },
         {
             title: "",
             key: "action",
             dataIndex: "action",
-            width: "10%",
-            render: () => (<div className="tw-flex tw-items-center tw-justify-end">
+            width: "5%",
+            render: (_, record) => (<div className="tw-flex tw-items-center tw-justify-end">
                 <Tooltip
-                    title="Thay đổi giảng viên phụ trách"
+                    title="Sửa sự kiện"
                     placement="top"
                     color={'#FF6D28'}
                 >
@@ -78,7 +104,7 @@ const ManageEvent = () => {
                     >
                         <Button
                             className="tw-cursor-pointer tw-border-0 tw-bg-transparent tw-shadow-none hover:tw-bg-transparent dark:tw-text-white dark:hover:tw-text-hoverLink"
-                            onClick={() => modalEventRef.current.show('EDIT')}
+                            onClick={() => modalEventRef.current.show('EDIT', record)}
                         >
                             <EditOutlined />
                         </Button>
@@ -88,46 +114,52 @@ const ManageEvent = () => {
                     // key={record.id}
                     className="tw-m-0"
                     content={
-                        <Tooltip title="Xóa lớp học" placement="top" color={'#FF6D28'}>
+                        <Tooltip title="Xóa sự kiện" placement="top" color={'#FF6D28'}>
                             <Button className="tw-border-0 tw-bg-transparent tw-pl-3 tw-shadow-none hover:tw-bg-transparent dark:tw-text-white dark:hover:tw-text-hoverLink">
                                 <DeleteOutlined />
                             </Button>
                         </Tooltip>
                     }
-                    title={`Xác nhận xóa sự kiện học này?`}
-                    onConfirm={() => console.log("Remove")}
+                    title={`Chuyển sự kiện vào thùng rác?`}
+                    onConfirm={() => handleRemoveEvent(record.id)}
                     placement="topRight"
                 />
-            </div>)
+            </div >)
         },
     ]
+    let data = []
+    const { data: res, isLoading, error } = useGetAllEventQuery();
+    if (res) {
+        data = res.data.map((item, index) => {
+            return {
+                key: index,
+                stt: index + 1,
+                id: item.id,
+                date: `${timeFormat(item.start_time.split('  ')[0])}`,
+                time: `${item.start_time.slice(10, -3)} - ${item.end_time.slice(
+                    10,
+                    -3,
+                )}`,
+                name: item.name,
+                img: item.image,
+                content: item.content,
+                location: item.location,
+                amount: item.event_users_count,
+                start_time: item.start_time,
+                end_time: item.end_time
+            }
+        })
+    }
 
-    const dataSource = [
-        {
-            stt: 1,
-            key: 1,
-            name: "Sự kiện Chào mừng ngày Nhà Giáo Việt Nam.",
-            date: "Thứ Bảy - 19/11/2022",
-            time: "00:00:00 - 23:59:00",
-            img: img1,
-            amount: 10,
-            content: 'Meeting văn nghệ ngày Nhà Giáo Việt Nam'
-        },
-        {
-            stt: 2,
-            key: 2,
-            name: "Sự kiện Chào mừng ngày Nhà Giáo Việt Nam.",
-            date: "Thứ Bảy - 20/11/2022",
-            time: "00:00:00 - 23:59:00",
-            img: img2,
-            amount: 0,
-            content: 'Meeting văn nghệ ngày Nhà Giáo Việt Nam dfsgfgsdrgsdfbvxvbxfgsdgresawefgsfdgsrdfbxfvsdfgdfgb'
-        }
-    ]
-
-    // `${item.start_time.slice(10, -3)} - ${item.end_time.slice(10,-3,)}`,
-
-
+    useEffect(() => {
+        dispatch(
+            setFlexBreadcrumb([
+                {
+                    title: 'Quản lý sự kiện',
+                },
+            ]),
+        );
+    });
 
     return (
         <>
@@ -141,6 +173,15 @@ const ManageEvent = () => {
                 </span>
                 <div className="tw-flex tw-items-center tw-gap-x-3">
                     <>
+                        <Link to={"/manage/events-trash"}>
+                            <Button
+                                icon={<BsFillTrashFill />}
+                                className="tw-flex tw-items-center tw-rounded-md tw-border-2 tw-px-2 tw-text-blue-500 hover:tw-bg-transparent hover:tw-text-blue-600 dark:tw-text-slate-100 dark:hover:tw-text-blue-500"
+                                type="link"
+                            >
+                                Thùng rác
+                            </Button>
+                        </Link>
                         <Button
                             icon={<PlusCircleOutlined />}
                             className="tw-flex tw-items-center tw-rounded-md tw-border-2 tw-px-2 tw-text-blue-500 hover:tw-bg-transparent hover:tw-text-blue-600 dark:tw-text-slate-100 dark:hover:tw-text-blue-500"
@@ -155,10 +196,14 @@ const ManageEvent = () => {
             <Table
                 columns={columns}
                 scroll={{ y: 350 }}
-                dataSource={dataSource}
+                dataSource={data ? data : []}
                 pagination={false}
                 size={'middle'}
+                loading={{ indicator: <Spinner />, spinning: isLoading }}
             />
+            {
+                error && <div className="tw-text-center tw-text-red-500 tw-text-lg tw-mt-5">Không thể lấy dữ liệu</div>
+            }
             <FormEventsRef ref={modalEventRef} />
         </>
     )
