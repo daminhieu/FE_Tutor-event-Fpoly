@@ -1,8 +1,6 @@
 import { createSlice } from '@reduxjs/toolkit';
 import { USER_ROLE } from '../../constants/role';
 
-//  nếu api die thì set isAuthenticated = true để vào được các route các khác
-
 const initialState = {
   isAuthenticated: false,
   user: null,
@@ -35,10 +33,13 @@ const authSlice = createSlice({
       }
     },
     logOut: () => initialState,
+    redirect: () => {
+      window.location.href = '/';
+    },
   },
 });
 
-export const { setCredentials, logOut } = authSlice.actions;
+export const { setCredentials, logOut, redirect } = authSlice.actions;
 
 export default authSlice.reducer;
 

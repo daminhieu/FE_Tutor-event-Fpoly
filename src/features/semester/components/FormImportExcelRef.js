@@ -1,26 +1,23 @@
-import { Button, Form, Input, Modal, Select, Spin, Table } from 'antd';
-import React, { useImperativeHandle } from 'react';
+import { Button, Form, Input, Modal, Select, Spin } from 'antd';
+import React, { useEffect, useImperativeHandle } from 'react';
 import { forwardRef } from 'react';
 import { toast } from 'react-toastify';
 import XLSX from 'xlsx';
 import { useImportStudentsSemesterMutation } from '../../../app/api/semesterApiSlice';
-import { transform } from 'lodash';
-import './styles.css';
 import { useParams } from 'react-router-dom';
 import { CloseCircleFilled } from '@ant-design/icons';
 
 const FormImportExcelRef = (props, ref) => {
   const [students, setStudents] = React.useState([]);
+  const [sheets, setSheets] = React.useState([]);
+  const [selectedSheet, setSelectedSheet] = React.useState([]);
   const { id: semesterId } = useParams();
-  const [
-    importStudentsSemester,
-    { isLoading: isImporting, isSuccess: isImported, error: importError },
-  ] = useImportStudentsSemesterMutation();
+  const [importStudentsSemester, { isLoading: isImporting }] =
+    useImportStudentsSemesterMutation();
   const [file, setFile] = React.useState(null);
   const [fileLoading, setFileLoading] = React.useState(false);
   const [visible, setVisible] = React.useState(false);
   const [error, setError] = React.useState(null);
-  const [previewOpen, setPreviewOpen] = React.useState(false);
   const [form] = Form.useForm();
 
   useImperativeHandle(ref, () => ({
@@ -32,66 +29,17 @@ const FormImportExcelRef = (props, ref) => {
       setVisible(false);
     },
   }));
-
-  const previewColumn = [
-    {
-      title: 'Mã sinh viên',
-      dataIndex: 'student_code',
-      key: 'student_code',
-      filterSearch: true,
-      filters: students.map((student) => ({
-        text: student.student_code,
-        value: student.student_code,
-      })),
-      onFilter: (value, record) => record.student_code.indexOf(value) === 0,
-      sorter: (a, b) => a.student_code.localeCompare(b.student_code),
-      sortDirections: ['descend', 'ascend'],
-    },
-    {
-      title: 'Họ và tên',
-      dataIndex: 'student_name',
-      key: 'student_name',
-    },
-    {
-      title: 'Email',
-      dataIndex: 'student_email',
-      key: 'student_email',
-    },
-    {
-      title: 'Số điện thoại',
-      dataIndex: 'student_phone',
-      key: 'student_phone',
-    },
-    {
-      title: 'Môn',
-      dataIndex: 'subject',
-      key: 'subject',
-    },
-    {
-      title: 'Vấn đề',
-      dataIndex: 'reason',
-      key: 'reason',
-    },
-  ];
-
   const handleFile = async (e) => {
-    setFile(e);
-    setFileLoading(true);
+    setStudents([]);
     const file = e.target.files[0];
+    setFile(file);
+  };
+
+  const handleData = async (file) => {
     const data = await file.arrayBuffer();
     const wb = XLSX.read(data, { type: 'array' });
-    // const BMUDPM = wb.SheetNames[6];
-    const BMCNTT = wb.SheetNames[7];
-    // const BMKT = wb.SheetNames[8];
-    // const BMDCK = wb.SheetNames[9];
-    // const BMTKDH = wb.SheetNames[10];
-    // const BMTMDT = wb.SheetNames[11];
-    // const BMDLNHKS = wb.SheetNames[12];
-    // const BMCB = wb.SheetNames[13];
-
-    const allSheet = [BMCNTT];
-
-    const rowData = allSheet.map((sheet) => {
+    setSheets(wb.SheetNames);
+    const rowData = selectedSheet.map((sheet) => {
       const json = XLSX.utils.sheet_to_json(wb.Sheets[sheet]);
       return json;
     });
@@ -106,7 +54,6 @@ const FormImportExcelRef = (props, ref) => {
         student_name: item['Họ tên sinh viên'],
         student_email: item['Email'],
         student_phone: item['SĐT'],
-        major: item['Bộ môn'],
         subject: item['Môn'],
         reason: item['Vấn đề gặp phải chi tiết'],
       };
@@ -117,8 +64,19 @@ const FormImportExcelRef = (props, ref) => {
     setFileLoading(false);
   };
 
+  useEffect(() => {
+    if (file) {
+      setFileLoading(true);
+      handleData(file);
+    }
+  }, [file, selectedSheet]);
+
   const clearForm = () => {
+    setVisible(false);
+    setError(null);
     form.resetFields();
+    setSheets([]);
+    setSelectedSheet([]);
     setFile(null);
     setStudents([]);
   };
@@ -129,8 +87,7 @@ const FormImportExcelRef = (props, ref) => {
       return;
     }
     // const chunkData = chunk(values.data, 100);
-    // console.log(chunkData);
-    // console.log(chunkData[0]);
+
     // await Promise.all(
     //   chunkData.map((data) =>
     //     importStudentsSemester({
@@ -149,9 +106,8 @@ const FormImportExcelRef = (props, ref) => {
     })
       .unwrap()
       .then((res) => {
-        toast.success('Import thành công');
-        setVisible(false);
-        form.resetFields();
+        toast.success(res.message);
+        clearForm();
       });
   };
 
@@ -159,16 +115,21 @@ const FormImportExcelRef = (props, ref) => {
     <Modal
       title={'Import danh sách sinh viên'}
       open={visible}
-      okType='default'
+      okType="default"
       onOk={() => {
         form.submit();
       }}
       onCancel={() => {
-        setVisible(false);
-        setError(null);
-        form.resetFields();
+        // setVisible(false);
+        // setError(null);
+        // form.resetFields();
+        // setSheets([]);
+        // selectedSheet([]);
+        // setFile(null);
+        // setStudents([]);
+        clearForm();
       }}
-      okText='Lưu'
+      okText="Lưu"
       confirmLoading={isImporting}
       destroyOnClose
       okButtonProps={{
@@ -184,23 +145,22 @@ const FormImportExcelRef = (props, ref) => {
         <Form
           form={form}
           preserve={false}
-          name='importForm'
-          layout='vertical'
+          name="importForm"
+          layout="vertical"
           onFinish={onFinish}
           onChange={() => {
             setError(null);
           }}
         >
           <div
-            className='
+            className="
            tw-relative
-          '
+          "
           >
             <Form.Item
-              name='file'
-              label='Chọn file excel'
-              valuePropName='filelist'
-              className='tw-mb-2'
+              name="file"
+              label="Chọn file excel"
+              valuePropName="filelist"
               rules={[
                 { required: true, message: 'Không được trống' },
                 () => ({
@@ -219,62 +179,61 @@ const FormImportExcelRef = (props, ref) => {
               ]}
             >
               <Input
-                type='file'
+                type="file"
                 onChange={handleFile}
-                accept='.xlsx, .xls, .csv'
-                className=' tw-cursor-pointer tw-outline-none file:tw-cursor-pointer file:tw-rounded-xl file:tw-border-none file:tw-bg-pink-500 file:tw-px-2 file:tw-py-1 file:tw-text-white hover:file:tw-bg-pink-600 active:tw-border-none'
+                disabled={fileLoading || isImporting}
+                accept=".xlsx, .xls, .csv"
+                className=" tw-cursor-pointer tw-outline-none file:tw-cursor-pointer file:tw-rounded-xl file:tw-border-none file:tw-bg-pink-500 file:tw-px-2 file:tw-py-1 file:tw-text-white hover:file:tw-bg-pink-600 active:tw-border-none"
               />
             </Form.Item>
-            {file && !fileLoading && (
-              <Button
-                type='text'
-                icon={<CloseCircleFilled />}
-                className='tw-absolute tw-top-[30px] tw-right-0 tw-mt-1 tw-rounded-full tw-border-none  tw-text-slate-500 tw-outline-none hover:tw-bg-transparent hover:tw-text-slate-600 '
-                onClick={clearForm}
-              ></Button>
-            )}
           </div>
+
+          {sheets.length > 0 && (
+            <Form.Item
+              name="sheet"
+              label="Chọn sheet"
+              rules={[{ required: true, message: 'Không được trống' }]}
+            >
+              <Select
+                placeholder="Chọn sheet"
+                disabled={fileLoading || isImporting}
+                mode="multiple"
+                onDeselect={(value) => {
+                  setSelectedSheet(
+                    selectedSheet.filter((item) => item !== value),
+                  );
+                }}
+                className="tw-rounded-xl tw-border-none tw-bg-sky-100 hover:tw-bg-sky-200"
+                onSelect={(value) => {
+                  setSelectedSheet(
+                    selectedSheet.concat(
+                      sheets.filter((item) => item === value),
+                    ),
+                  );
+                }}
+              >
+                {sheets.map((sheet) => (
+                  <Select.Option value={sheet}>{sheet}</Select.Option>
+                ))}
+              </Select>
+            </Form.Item>
+          )}
         </Form>
 
         <div>
           {error && (
-            <div className='tw-text-red-500'>
+            <div className="tw-text-red-500">
               {error?.response?.data?.message || error?.message}
             </div>
           )}
           {fileLoading && (
-            <div className='tw-flex tw-items-center tw-justify-center tw-text-blue-300'>
+            <div className="tw-flex tw-items-center tw-justify-center tw-text-blue-300">
               Đang xử lý file...
               <Spin />
             </div>
           )}
         </div>
       </div>
-
-      {students.length > 0 && (
-        <Button type='text'
-          className='tw-rounded-sm tw-p-0  hover:tw-bg-transparent hover:tw-text-orange-400 tw-text-orange-300'
-        
-        onClick={() => setPreviewOpen(true)}>
-          Xem trước
-        </Button>
-      )}
-
-      <Modal
-        title='Xem trước'
-        centered
-        open={previewOpen}
-        onOk={() => setPreviewOpen(false)}
-        onCancel={() => setPreviewOpen(false)}
-        width={1200}
-      >
-        <Table
-          columns={previewColumn}
-          dataSource={students}
-          scroll={{ y: 450,}}
-          rowKey='id'
-        />
-      </Modal>
     </Modal>
   );
 };

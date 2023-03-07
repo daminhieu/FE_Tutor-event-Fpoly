@@ -6,16 +6,26 @@ export const attendanceApiSlice = apiSlice.injectEndpoints({
       query: () => 'attendance/classrooms',
       providesTags: ['Attendance'],
     }),
-    getAttendanceListStudent: builder.query({
-      query: (classId) => `attendance/${classId}/students`,
+    getAttendanceClassLesson: builder.query({
+      query: (classId) => `attendance/classroom/${classId}/lessons`,
       providesTags: ['Attendance'],
       transformResponse: (response) => {
         return response.data;
       },
     }),
+    getAttendanceLessonListStudent: builder.mutation({
+      // query: (lessonId) => `attendance/lesson/${lessonId}`,
+      query: (lessonId) => ({
+        url: `lesson/${lessonId}/students-checked-in`,
+        method: 'GET',
+
+      }),
+      invalidatesTags: ['Attendance'],
+
+    }),
     updateAttendanceStudentStatus: builder.mutation({
       query: (data) => ({
-        url: `attendance/${data.classId}/update`,
+        url: `attendance/lesson/${data.lessonId}`,
         method: 'PUT',
         body: data.data,
       }),
@@ -26,6 +36,7 @@ export const attendanceApiSlice = apiSlice.injectEndpoints({
 
 export const {
   useGetAttendanceListClassQuery,
-  useGetAttendanceListStudentQuery,
+  useGetAttendanceClassLessonQuery,
   useUpdateAttendanceStudentStatusMutation,
+  useGetAttendanceLessonListStudentMutation,
 } = attendanceApiSlice;

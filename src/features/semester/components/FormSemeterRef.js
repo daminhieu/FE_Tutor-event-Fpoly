@@ -3,22 +3,28 @@ import moment from 'moment';
 import React, { useImperativeHandle } from 'react';
 import { forwardRef } from 'react';
 import { toast } from 'react-toastify';
-import { useAddSemesterMutation } from '../../../app/api/semesterApiSlice';
+import {
+  useAddSemesterMutation,
+  useUpdateSemesterMutation,
+} from '../../../app/api/semesterApiSlice';
 // import { split } from 'lodash';
 import './styles.css';
 
 const { RangePicker } = DatePicker;
 
+const MODE = {
+  ADD: 'ADD',
+  EDIT: 'EDIT',
+};
+
 const FormSemeterRef = (props, ref) => {
   const [addSemester, { isLoading: addLoading }] = useAddSemesterMutation();
+  const [updateSemester, { isLoading: updateLoading }] =
+    useUpdateSemesterMutation();
   const [visible, setVisible] = React.useState(false);
-  const [error, setError] = React.useState(null);
+  const [errors, setErrors] = React.useState(null);
   const [title, setTitle] = React.useState('');
   const [form] = Form.useForm();
-  const MODE = {
-    ADD: 'ADD',
-    EDIT: 'EDIT',
-  };
   const [mode, setMode] = React.useState(MODE.ADD);
   useImperativeHandle(ref, () => ({
     show: (caseForm, data) => {
@@ -30,6 +36,7 @@ const FormSemeterRef = (props, ref) => {
         setTitle('Sửa kì học');
         setMode(MODE.EDIT);
         form.setFieldsValue({
+          id: data.id,
           name: data.name,
           time: [
             moment(data.start_time, 'YYYY-MM-DD HH:mm:ss'),
@@ -46,6 +53,7 @@ const FormSemeterRef = (props, ref) => {
 
   const onFinish = (values) => {
     const data = {
+      id: values.id,
       name: values.name,
       start_time: values.time[0].format('YYYY-MM-DD'),
       end_time: values.time[1].format('YYYY-MM-DD'),
@@ -56,17 +64,22 @@ const FormSemeterRef = (props, ref) => {
           .unwrap()
           .then((res) => {
             setVisible(false);
-            toast.success('Thêm thành công');
+            toast.success(res.message);
           })
           .catch((err) => {
-            setError(err.data);
+            setErrors(err.data);
           });
         break;
       case MODE.EDIT:
-        setTimeout(() => {
-          setVisible(false);
-          toast.success('Sửa thành công cái nịt');
-        }, 1000);
+        updateSemester(data)
+          .unwrap()
+          .then((res) => {
+            setVisible(false);
+            toast.success(res.message);
+          })
+          .catch((err) => {
+            setErrors(err.data);
+          });
         break;
       default:
     }
@@ -76,17 +89,17 @@ const FormSemeterRef = (props, ref) => {
     <Modal
       title={title}
       open={visible}
-      okType='default'
+      okType="default"
       onOk={() => {
         form.submit();
       }}
       onCancel={() => {
         setVisible(false);
-        setError(null);
+        setErrors(null);
         form.resetFields();
       }}
-      okText='Lưu'
-      confirmLoading={addLoading}
+      okText="Lưu"
+      confirmLoading={addLoading || updateLoading}
       destroyOnClose
       okButtonProps={{
         className:
@@ -99,21 +112,21 @@ const FormSemeterRef = (props, ref) => {
         <Form
           form={form}
           preserve={false}
-          name='semeterForm'
+          name="semeterForm"
           initialValues={{
             name: '',
             time: '',
           }}
-          layout='vertical'
+          layout="vertical"
           onFinish={onFinish}
           onChange={() => {
-            setError(null);
+            setErrors(null);
           }}
         >
           <Form.Item
-            name='name'
-            label='Tên kì:'
-            tooltip='Đặt tên kì học theo đúng quy tắc Kì xong mới đến Block. Ví dụ: FA22-Block1.'
+            name="name"
+            label="Tên kì:"
+            tooltip="Đặt tên kì học theo đúng quy tắc Kì xong mới đến Block. Ví dụ: FA22-Block1."
             rules={[
               { required: true, message: 'Tên kỳ không được trống' },
               {
@@ -125,8 +138,12 @@ const FormSemeterRef = (props, ref) => {
             <Input />
           </Form.Item>
 
+          <Form.Item name="id" className="tw-hidden">
+            <Input></Input>
+          </Form.Item>
+
           <Form.Item
-            label='Thời gian kỳ học:'
+            label="Thời gian kỳ học:"
             name={'time'}
             required
             rules={[
@@ -141,26 +158,30 @@ const FormSemeterRef = (props, ref) => {
             ]}
           >
             <RangePicker
-              className='tw-w-full'
+              className="tw-w-full"
               placeholder={['Ngày bắt đầu', 'Ngày kết thúc']}
-              label='test'
+              label="test"
               format={'DD/MM/YYYY'}
               onChange={() => {
-                setError(null);
+                setErrors(null);
               }}
             />
           </Form.Item>
         </Form>
 
         <div>
-          {error && (
-            <div className='tw-text-red-500'>
+          {typeof errors === 'string' ? (
+            <div className="tw-text-red-500">Có lỗi xảy ra.</div>
+          ) : (
+            <div className="tw-text-red-500">
               {/* {split(error?.message, '(')[0]} */}
-              {error?.errors?.name && <div>{error?.errors?.name}</div>}
-              {error?.errors?.start_time && (
-                <div>{error?.errors?.start_time}</div>
+              {errors?.errors?.name && <div>{errors?.errors?.name}</div>}
+              {errors?.errors?.start_time && (
+                <div>{errors?.errors?.start_time}</div>
               )}
-              {error?.errors?.end_time && <div>{error?.errors?.end_time}</div>}
+              {errors?.errors?.end_time && (
+                <div>{errors?.errors?.end_time}</div>
+              )}
             </div>
           )}
         </div>

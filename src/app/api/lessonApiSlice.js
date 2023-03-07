@@ -7,7 +7,7 @@ export const lessonApiSlice = apiSlice.injectEndpoints({
         url: `classroom/${classId}/lessons`,
       }),
       transformResponse: (response) => {
-        return response.data;
+        return response;
       },
       providesTags: ['Lesson'],
     }),
@@ -31,9 +31,16 @@ export const lessonApiSlice = apiSlice.injectEndpoints({
       }),
       invalidatesTags: ['Lesson'],
     }),
+    startLesson: builder.mutation({
+      query: (id) => ({
+        url: `lesson/${id}/start`,
+        method: 'PUT',
+      }),
+      invalidatesTags: ['Lesson'],
+    }),
     delLesson: builder.mutation({
       query: (id) => ({
-        url: `lesson/${id}/destroy`,
+        url: `lesson/${id}/delete`,
         method: 'DELETE',
       }),
       invalidatesTags: ['Lesson'],
@@ -46,5 +53,6 @@ export const {
   useGetOneLessonQuery,
   useAddLessonMutation,
   useUpdateLessonMutation,
+  useStartLessonMutation,
   useDelLessonMutation,
 } = lessonApiSlice;

@@ -19,8 +19,9 @@ function App() {
       </ScrollToTop>
       <ToastContainer
         position='top-right'
-        autoClose={3000}
-        hideProgressBar={true}
+        pauseOnHover={false}
+        autoClose={2000}
+        hideProgressBar={false}
       />
     </div>
   );
